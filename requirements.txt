@@ -5,6 +5,7 @@ dnspython==2.7.0
 fastapi==0.115.13
 h11==0.16.0
 idna==3.10
+motor==3.7.1
 pydantic==2.11.7
 pydantic_core==2.33.2
 pymongo==4.13.2
