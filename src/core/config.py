@@ -4,7 +4,11 @@ import os
 
 load_dotenv()
 
-ENV_VARS = {"MONGO_URI": os.getenv("MONGO_URI"), "MONGO_DB": os.getenv("MONGO_DB")}
+ENV_VARS = {
+    "MONGO_URI": os.getenv("MONGO_URI"),
+    "MONGO_DB": os.getenv("MONGO_DB"),
+    "ADMIN_USER_ID": os.getenv("ADMIN_USER_ID"),
+}
 
 
 def are_env_vars_loaded() -> bool:

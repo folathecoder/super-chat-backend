@@ -4,7 +4,9 @@ from src.models.user import User, BaseUser, UpdateUser
 from src.db.collections import users_collection
 from src.schema.user_schema import user_schema
 from typing import Optional
+from datetime import datetime, timezone
 from src.utils.converters.convert_to_object_id import convert_to_object_id
+from src.core.config import ENV_VARS
 
 
 async def create_user(data: BaseUser) -> User:
@@ -17,6 +19,11 @@ async def create_user(data: BaseUser) -> User:
         )
 
     new_user = data.model_dump()
+
+    now = datetime.now(timezone.utc)
+    new_user["updatedAt"] = now
+    new_user["createdAt"] = now
+
     response = await users_collection.insert_one(new_user)
     new_user["_id"] = response.inserted_id
 
@@ -42,6 +49,15 @@ async def get_user_by_id(id: str) -> Optional[User]:
     return user_schema(user)
 
 
+async def get_current_user() -> Optional[User]:
+    user = await get_user_by_id(ENV_VARS["ADMIN_USER_ID"])
+
+    if not user:
+        HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    return user
+
+
 async def update_user(user_id: str, update_data: UpdateUser) -> User:
     user = await get_user_by_id(user_id)
 
@@ -50,6 +66,9 @@ async def update_user(user_id: str, update_data: UpdateUser) -> User:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with id: {user_id} not found",
         )
+
+    update_user_obj = update_data.model_dump(exclude_unset=True)
+    update_user_obj["updatedAt"] = datetime.now(timezone.utc)
 
     await users_collection.update_one(
         {"_id": convert_to_object_id(user_id)},

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from datetime import datetime, timezone
 
 
 class BaseUser(BaseModel):
@@ -10,6 +11,14 @@ class BaseUser(BaseModel):
 
 class User(BaseUser):
     id: str = Field(..., description="Unique ID of the user")
+    createdAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="User creation date",
+    )
+    updatedAt: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="User update date",
+    )
 
 
 class UpdateUser(BaseModel):

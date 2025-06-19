@@ -8,12 +8,12 @@ health_router = APIRouter()
 
 
 @health_router.get("/", status_code=status.HTTP_200_OK)
-async def health():
+async def health_endpoint():
     return {"status": "working"}
 
 
 @health_router.get("/deep", status_code=status.HTTP_200_OK)
-async def deep_health_check():
+async def deep_health_check_endpoint():
     checks = {
         "mongo_connected": is_mongo_connected(),
         "env_vars_loaded": are_env_vars_loaded(),
