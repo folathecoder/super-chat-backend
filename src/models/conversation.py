@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timezone
+from src.models.message import Message
 
 
 class BaseConversation(BaseModel):
@@ -17,6 +18,12 @@ class Conversation(BaseConversation):
     updatedAt: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="Conversation update date",
+    )
+
+
+class ConversationWithMessages(Conversation):
+    messages: List[Message] = Field(
+        ..., description="List of all conversation messages ordered by timestamp"
     )
 
 

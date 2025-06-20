@@ -1,11 +1,13 @@
 from fastapi import HTTPException
 from starlette import status
-from src.models.conversation import Conversation
+from src.models.conversation import Conversation, ConversationWithMessages
 from src.schema.conversation_schema import conversation_schema
 from src.db.collections import conversations_collection
 from datetime import datetime, timezone
 from src.utils.converters.convert_to_object_id import convert_to_object_id
 from src.services.user_service import get_current_user
+from src.services.message_service import get_messages, delete_messages
+from typing import List
 
 
 async def create_conversation() -> Conversation:
@@ -49,8 +51,34 @@ async def get_conversation(conversation_id: str) -> Conversation:
     return conversation_obj
 
 
+async def get_conversation_with_messages(
+    conversation_id: str,
+) -> ConversationWithMessages:
+    conversation = await get_conversation(conversation_id)
+    messages = await get_messages(conversation_id)
+
+    conversation["messages"] = messages
+
+    return conversation
+
+
+async def get_all_conversations() -> List[Conversation]:
+    user = await get_current_user()
+
+    cursor = conversations_collection.find({"userId": convert_to_object_id(user["id"])})
+
+    all_conversations = []
+
+    async for conversation in cursor:
+        all_conversations.append(conversation_schema(conversation))
+
+    return all_conversations
+
+
 async def delete_conversation(conversation_id: str) -> None:
     conversation = await get_conversation(conversation_id)
+
+    await delete_messages(conversation_id)
 
     response = await conversations_collection.delete_one(
         {"_id": convert_to_object_id(conversation["id"])}

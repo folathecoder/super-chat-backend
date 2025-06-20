@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from starlette import status
-from src.models.conversation import Conversation
+from src.models.conversation import Conversation, ConversationWithMessages
+from typing import List
 from src.services.conversation_service import (
     create_conversation,
-    get_conversation,
     delete_conversation,
+    get_all_conversations,
+    get_conversation_with_messages,
 )
 
 conversation_router = APIRouter()
@@ -17,22 +19,37 @@ async def start_conversation_endpoint():
     try:
         return await create_conversation()
     except Exception as e:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to start new conversation: {str(e)}",
         )
 
 
 @conversation_router.get(
-    "/{conversation_id}", status_code=status.HTTP_200_OK, response_model=Conversation
+    "/{conversation_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=ConversationWithMessages,
 )
 async def get_conversation_endpoint(conversation_id: str):
     try:
-        return await get_conversation(conversation_id)
+        return await get_conversation_with_messages(conversation_id)
     except Exception as e:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Failed to get conversation: {str(e)}",
+            detail=f"Failed to get conversation with messages: {str(e)}",
+        )
+
+
+@conversation_router.get(
+    "/", status_code=status.HTTP_200_OK, response_model=List[Conversation]
+)
+async def get_all_conversations_endpoint():
+    try:
+        return await get_all_conversations()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Failed to get conversations: {str(e)}",
         )
 
 
@@ -45,7 +62,7 @@ async def delete_conversation_endpoint(conversation_id: str):
     try:
         return await delete_conversation(conversation_id)
     except Exception as e:
-        HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete conversation: {str(e)}",
         )

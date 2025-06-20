@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from src.api.v1.endpoints.health import health_router
 from src.api.v1.endpoints.user import user_router
 from src.api.v1.endpoints.conversation import conversation_router
+from src.api.v1.endpoints.message import messages_router
 from src.db.mongo import is_mongo_connected, client
 from src.core.config import validate_env_vars
 from src.core.logger import logger
@@ -37,3 +38,4 @@ app.include_router(user_router, prefix=f"{base_url}/users", tags=["User"])
 app.include_router(
     conversation_router, prefix=f"{base_url}/conversations", tags=["Conversation"]
 )
+app.include_router(messages_router, prefix=f"{base_url}/messages", tags=["Message"])
