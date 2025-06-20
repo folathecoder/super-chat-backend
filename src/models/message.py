@@ -1,11 +1,18 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from enum import Enum
+from src.models.status import Status
 
 
 class Author(str, Enum):
     USER = "user"
     AI = "ai"
+
+
+class Status(str, Enum):
+    LOADING = "loading"
+    SUCCESS = "success"
+    FAILED = "failed"
 
 
 class BaseMessage(BaseModel):
@@ -18,6 +25,7 @@ class BaseMessage(BaseModel):
         description="Message creation date",
     )
     author: Author = Field(..., description="Author of the conversation")
+    status: Status = Field(..., description="Status of the message")
 
 
 class Message(BaseMessage):

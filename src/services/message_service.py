@@ -23,6 +23,7 @@ async def create_message(conversation_id: str, message: CreateMessage) -> Messag
     new_message = {
         "conversationId": convert_to_object_id(conversation_id),
         "timestamp": datetime.now(timezone.utc),
+        "status": "success",
         **message.model_dump(),
     }
 

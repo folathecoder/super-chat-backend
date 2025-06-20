@@ -7,5 +7,6 @@ def message_schema(message: Message):
         "conversationId": str(message["conversationId"]),
         "timestamp": message["timestamp"],
         "author": message["author"],
+        "status": message["status"],
         "content": message["content"],
     }
