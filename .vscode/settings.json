@@ -1,7 +1,11 @@
 {
   "cSpell.words": [
+    "ainvoke",
     "bson",
+    "checkpointer",
     "dotenv",
+    "LANGCHAIN",
+    "LANGSMITH",
     "levelname"
   ]
 }

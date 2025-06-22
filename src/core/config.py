@@ -8,6 +8,12 @@ ENV_VARS = {
     "MONGO_URI": os.getenv("MONGO_URI"),
     "MONGO_DB": os.getenv("MONGO_DB"),
     "ADMIN_USER_ID": os.getenv("ADMIN_USER_ID"),
+    "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+    "LANGSMITH_TRACING": os.getenv("LANGSMITH_TRACING"),
+    "LANGSMITH_ENDPOINT": os.getenv("LANGSMITH_ENDPOINT"),
+    "LANGSMITH_API_KEY": os.getenv("LANGSMITH_API_KEY"),
+    "LANGCHAIN_API_KEY": os.getenv("LANGCHAIN_API_KEY"),
+    "LANGSMITH_PROJECT": os.getenv("LANGSMITH_PROJECT"),
 }
 
 
