@@ -1,6 +1,10 @@
 from fastapi import HTTPException
 from starlette import status
-from src.models.conversation import Conversation, ConversationWithMessages
+from src.models.conversation import (
+    Conversation,
+    ConversationWithMessages,
+    UpdateConversation,
+)
 from src.schema.conversation_schema import conversation_schema
 from src.db.collections import conversations_collection
 from datetime import datetime, timezone
@@ -17,6 +21,7 @@ async def create_conversation() -> Conversation:
     new_conversation = {
         "userId": convert_to_object_id(user["id"]),
         "title": "New chat",
+        "hasGeneratedTitle": False,
         "createdAt": now,
         "updatedAt": now,
     }
@@ -89,3 +94,27 @@ async def delete_conversation(conversation_id: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete conversation with id: {conversation_id}",
         )
+
+
+async def update_conversation(
+    conversation_id: str, update_conversation: UpdateConversation
+) -> Conversation:
+    conversation = await get_conversation(conversation_id)
+
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Conversation with conversation_id: {conversation_id} not found",
+        )
+
+    update_conversation_obj = update_conversation.model_dump(exclude_unset=True)
+    update_conversation_obj["updatedAt"] = datetime.now(timezone.utc)
+
+    await conversations_collection.update_one(
+        {"_id": convert_to_object_id(conversation_id)},
+        {"$set": update_conversation_obj},
+    )
+
+    updated_conversation = await get_conversation(conversation_id)
+
+    return updated_conversation
