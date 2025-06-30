@@ -1,11 +1,17 @@
 {
   "cSpell.words": [
     "ainvoke",
+    "alazy",
     "bson",
     "checkpointer",
     "dotenv",
     "LANGCHAIN",
     "LANGSMITH",
-    "levelname"
+    "levelname",
+    "metadatas",
+    "officedocument",
+    "openxmlformats",
+    "pdfs",
+    "spreadsheetml"
   ]
 }
