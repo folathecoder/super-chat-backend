@@ -22,6 +22,7 @@ async def create_conversation() -> Conversation:
         "userId": convert_to_object_id(user["id"]),
         "title": "New chat",
         "hasGeneratedTitle": False,
+        "hasFilesUploaded": False,
         "createdAt": now,
         "updatedAt": now,
     }

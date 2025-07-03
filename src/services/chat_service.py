@@ -1,5 +1,6 @@
 import asyncio
 from fastapi import HTTPException
+from typing import List
 from starlette import status
 from src.llm.memories.chat_memory import app, get_thread_config
 from src.models.message import Message, CreateMessage, UpdateMessage
@@ -8,16 +9,32 @@ from langchain_core.messages import HumanMessage
 from src.services.message_service import update_message
 from src.services.conversation_service import update_conversation, get_conversation
 from src.models.conversation import UpdateConversation
+from src.models.file import FileData
 from src.core.logger import logging
+from src.services.retrieval_service import retrieval_service
 from src.llm.prompts import super_chat_conversation_title_prompt
 
 
 async def get_chat_response(
-    conversation_id: str, message_id: str, message: CreateMessage
+    conversation_id: str,
+    message_id: str,
+    message: CreateMessage,
+    file_data_list: List[FileData],
 ) -> Message:
     try:
         user_message = message.model_dump()
-        input_messages = [HumanMessage(content=user_message["content"])]
+        query = user_message["content"]
+
+        question = await retrieval_service.run(
+            query=query,
+            conversation_id=conversation_id,
+            message_id=message_id,
+            files=file_data_list,
+        )
+
+        print("question", question)
+
+        input_messages = [HumanMessage(content=query)]
         config = get_thread_config(conversation_id)
 
         output = await app.ainvoke({"messages": input_messages}, config=config)

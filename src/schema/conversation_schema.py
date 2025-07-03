@@ -7,6 +7,7 @@ def conversation_schema(conversation: Conversation):
         "userId": str(conversation["userId"]),
         "title": conversation["title"],
         "hasGeneratedTitle": conversation["hasGeneratedTitle"],
+        "hasFilesUploaded": conversation["hasFilesUploaded"],
         "createdAt": conversation["createdAt"],
         "updatedAt": conversation["updatedAt"],
     }

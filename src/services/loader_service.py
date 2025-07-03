@@ -1,45 +1,107 @@
-import aiofiles
 import os
+import asyncio
 import inspect
-from langchain_community.document_loaders import PyPDFLoader, CSVLoader
-from langchain_community.document_loaders.image import UnstructuredImageLoader
+import aioboto3
+from uuid import uuid4
+from langchain_core.documents import Document
+from langchain_community.document_loaders import S3FileLoader
 from fastapi import UploadFile, HTTPException, status
-from typing import List, Optional
-from src.utils.constants.file_type import ALLOWED_FILE_TYPES, FILE_TYPE
+from typing import List
+from botocore.exceptions import ClientError
+
+from src.utils.constants.file_type import FILE_TYPE
 from src.core.logger import logger
+from src.models.file import FileData
 from src.services.chunking_service import chunking_service
+from src.services.vector_store_service import add_documents_to_vector_store
+from src.services.user_service import get_current_user
+from src.models.conversation import UpdateConversation
+from src.services.conversation_service import update_conversation
+from src.core.config import ENV_VARS
+
+BUCKET_NAME = ENV_VARS["AWS_S3_BUCKET_NAME"]
+session = aioboto3.Session()
 
 
 class LoaderService:
-    async def run(self, files: Optional[List[UploadFile]]):
+    upload_dir: str = "uploads"
+    conversation_id: str
+    message_id: str
+
+    async def run(
+        self, files: List[FileData], conversation_id: str, message_id: str
+    ) -> bool:
         if not files:
             logger.info("No files provided and the loader run is terminated early.")
-            return
+            return False
 
-        for file in files:
-            if file.content_type not in ALLOWED_FILE_TYPES:
+        self.conversation_id = conversation_id
+        self.message_id = message_id
+
+        try:
+            tasks = []
+
+            for file in files:
+                tasks.append(self._process_file(file))
+
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for res in results:
+                if isinstance(res, Exception):
+                    logger.error(f"Error loading file: {res}")
+                    return False
+
+            updated_conversation = UpdateConversation(hasFilesUploaded=True)
+            await update_conversation(
+                conversation_id=conversation_id,
+                update_conversation=updated_conversation,
+            )
+
+            logger.info("All files loaded successfully.")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error in background file processing: {e}")
+            return False
+
+    async def _process_file(self, file: UploadFile):
+        file_key = await self._upload_file_to_s3(file)
+        logger.info(f"Uploaded file with key: {file_key}")
+        await self._load_file_by_type(file_key=file_key, content_type=file.content_type)
+
+    async def _upload_file_to_s3(self, file_data: FileData) -> str:
+        ext = os.path.splitext(file_data.filename)[1]
+        file_key = f"{uuid4()}{ext}"
+
+        async with session.client("s3") as s3_client:
+            try:
+                await s3_client.put_object(
+                    Bucket=BUCKET_NAME,
+                    Key=file_key,
+                    Body=file_data.content,
+                    ContentType=file_data.content_type,
+                    Metadata={
+                        "original_filename": file_data.filename,
+                        "conversation_id": self.conversation_id,
+                        "message_id": self.message_id,
+                    },
+                )
+                logger.info(f"Successfully uploaded file to S3: {file_key}")
+
+            except ClientError as e:
+                logger.error(f"Failed to upload file to S3: {e}")
                 raise HTTPException(
-                    status_code=status.HTTP_406_NOT_ACCEPTABLE,
-                    detail=f"Document with file name: {file.filename} and file type: {file.content_type} is not allowed",
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Error uploading file {file_data.filename} to storage: {str(e)}",
                 )
 
-            await self._upload_file_to_local_directory(file)
-            await self._load_file_by_type(file)
+        return file_key
 
-    async def _upload_file_to_local_directory(self, file: UploadFile):
-        os.makedirs("uploads", exist_ok=True)
-        file_location = f"uploads/{file.filename}"
+    def _load_file_from_s3(self, file_key: str) -> List[Document]:
+        loader = S3FileLoader(BUCKET_NAME, file_key)
+        return loader.load()
 
-        async with aiofiles.open(file_location, "wb") as buffer:
-            while chunk := await file.read(1024):
-                await buffer.write(chunk)
-
-        logger.info(f"Uploaded {file.filename} in the local directory")
-
-    def _get_local_file_path(self, file: UploadFile) -> str:
-        return f"uploads/{file.filename}"
-
-    async def _load_file_by_type(self, file: UploadFile):
+    async def _load_file_by_type(self, file_key: str, content_type: str):
         handlers = {
             FILE_TYPE["PDF"]: self._load_pdf,
             FILE_TYPE["JPEG"]: self._load_image,
@@ -47,44 +109,68 @@ class LoaderService:
             FILE_TYPE["CSV"]: self._load_csv,
         }
 
-        handler = handlers.get(file.content_type)
+        handler = handlers.get(content_type)
 
         if handler:
             if inspect.iscoroutinefunction(handler):
-                return await handler(file)
-            return handler(file)
+                return await handler(file_key)
+            return handler(file_key)
         else:
-            logger(f"Unsupported file type: {file.content_type}")
+            logger.error(f"Unsupported file type: {content_type}")
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"Unsupported file type: {content_type}",
+            )
 
-    async def _load_pdf(self, file: UploadFile):
-        logger.info(f"Loading PDF file: {file.filename}")
+    async def _load_pdf(self, file_key: str):
+        documents = self._load_file_from_s3(file_key)
+        chunks = chunking_service.recursive_text_splitter(documents=documents)
+        enriched_chunks = await self._enrich_documents_with_metadata(chunks)
 
-        file_path = self._get_local_file_path(file)
-        loader = PyPDFLoader(file_path)
-        pages = []
+        logger.info(
+            f"Loaded PDF document and splitted into {len(chunks)} chunks: {file_key}"
+        )
 
-        async for page in loader.alazy_load():
-            pages.append(page)
+        add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
 
-        chunks = chunking_service.recursive_text_splitter(documents=pages)
-
-    def _load_csv(self, file: UploadFile):
-        logger.info(f"Loading CSV file: {file.filename}")
-
-        file_path = self._get_local_file_path(file)
-        loader = CSVLoader(file_path=file_path)
-
-        documents = loader.load()
+    async def _load_image(self, file_key: str):
+        documents = self._load_file_from_s3(file_key)
         chunks = chunking_service.recursive_text_splitter(documents)
+        enriched_chunks = await self._enrich_documents_with_metadata(chunks)
 
-    def _load_image(self, file: UploadFile):
-        logger.info(f"Loading Image file: {file.filename}")
+        logger.info(
+            f"Loaded Image document and splitted into {len(chunks)} chunks: {file_key}"
+        )
 
-        file_path = self._get_local_file_path(file)
-        loader = UnstructuredImageLoader(file_path)
+        add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
 
-        documents = loader.load()
+    async def _load_csv(self, file_key: str):
+        documents = self._load_file_from_s3(file_key)
         chunks = chunking_service.recursive_text_splitter(documents)
+        enriched_chunks = await self._enrich_documents_with_metadata(chunks)
+
+        logger.info(
+            f"Loaded CSV document and splitted into {len(chunks)} chunks: {file_key}"
+        )
+
+        add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
+
+    async def _enrich_documents_with_metadata(
+        self, documents: List[Document]
+    ) -> List[Document]:
+        user = await get_current_user()
+
+        for i, document in enumerate(documents):
+            document.metadata.update(
+                {
+                    "conversation_id": self.conversation_id,
+                    "message_id": self.message_id,
+                    "user_id": user["id"],
+                    "order": i,
+                }
+            )
+
+        return documents
 
 
 loader_service = LoaderService()
