@@ -3,9 +3,16 @@ from logging.handlers import RotatingFileHandler
 import os
 from src.core.constant import APP_NAME
 
+# Ensure the logs directory exists
 LOG_FILE = "logs/app.log"
 os.makedirs("logs", exist_ok=True)
 
+# Configure root logger:
+# - Log level: INFO
+# - Log format includes timestamp, level, logger name, and message
+# - Handlers:
+#     * RotatingFileHandler to limit log file size and keep backups
+#     * StreamHandler to output logs to console
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -15,4 +22,5 @@ logging.basicConfig(
     ],
 )
 
+# Create a logger instance with application-specific name
 logger = logging.getLogger(APP_NAME)

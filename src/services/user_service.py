@@ -1,17 +1,28 @@
 from fastapi import HTTPException
 from starlette import status
+from datetime import datetime, timezone
+from typing import Optional
 from src.models.user import User, BaseUser, UpdateUser
 from src.db.collections import users_collection
 from src.schema.user_schema import user_schema
-from typing import Optional
-from datetime import datetime, timezone
 from src.utils.converters.convert_to_object_id import convert_to_object_id
 from src.core.config import ENV_VARS
 
 
 async def create_user(data: BaseUser) -> User:
-    existing_user = await get_user_by_email(data.email)
+    """
+    Create a new user in the database.
 
+    Args:
+        data (BaseUser): Data required to create the user.
+
+    Returns:
+        User: The created user object.
+
+    Raises:
+        HTTPException: If a user with the same email already exists.
+    """
+    existing_user = await get_user_by_email(data.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -19,7 +30,6 @@ async def create_user(data: BaseUser) -> User:
         )
 
     new_user = data.model_dump()
-
     now = datetime.now(timezone.utc)
     new_user["updatedAt"] = now
     new_user["createdAt"] = now
@@ -31,36 +41,71 @@ async def create_user(data: BaseUser) -> User:
 
 
 async def get_user_by_email(email: str) -> Optional[User]:
-    user = await users_collection.find_one({"email": email})
+    """
+    Retrieve a user by their email.
 
+    Args:
+        email (str): Email of the user.
+
+    Returns:
+        Optional[User]: User object if found, else None.
+    """
+    user = await users_collection.find_one({"email": email})
     if not user:
         return None
-
     return user_schema(user)
 
 
 async def get_user_by_id(id: str) -> Optional[User]:
+    """
+    Retrieve a user by their ID.
+
+    Args:
+        id (str): User's ID.
+
+    Returns:
+        Optional[User]: User object if found, else None.
+    """
     user_id = convert_to_object_id(id)
     user = await users_collection.find_one({"_id": user_id})
-
     if not user:
         return None
-
     return user_schema(user)
 
 
 async def get_current_user() -> Optional[User]:
+    """
+    Get the current user from environment config.
+
+    Returns:
+        Optional[User]: The current user object.
+
+    Raises:
+        HTTPException: If current user is not found.
+    """
     user = await get_user_by_id(ENV_VARS["ADMIN_USER_ID"])
-
     if not user:
-        HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
     return user
 
 
 async def update_user(user_id: str, update_data: UpdateUser) -> User:
-    user = await get_user_by_id(user_id)
+    """
+    Update user details.
 
+    Args:
+        user_id (str): ID of the user to update.
+        update_data (UpdateUser): Data to update.
+
+    Returns:
+        User: Updated user object.
+
+    Raises:
+        HTTPException: If user does not exist.
+    """
+    user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -72,17 +117,24 @@ async def update_user(user_id: str, update_data: UpdateUser) -> User:
 
     await users_collection.update_one(
         {"_id": convert_to_object_id(user_id)},
-        {"$set": update_data.model_dump(exclude_unset=True)},
+        {"$set": update_user_obj},
     )
 
     updated_user = await get_user_by_id(user_id)
-
     return updated_user
 
 
 async def delete_user(user_id: str) -> None:
-    user = await get_user_by_id(user_id)
+    """
+    Delete a user by ID.
 
+    Args:
+        user_id (str): ID of the user to delete.
+
+    Raises:
+        HTTPException: If user does not exist or deletion fails.
+    """
+    user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

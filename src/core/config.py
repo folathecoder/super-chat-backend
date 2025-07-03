@@ -20,6 +20,12 @@ ENV_VARS = {
 
 
 def are_env_vars_loaded() -> bool:
+    """
+    Check if all required environment variables are set.
+
+    Returns:
+        bool: True if all required variables are present, False otherwise.
+    """
     missing = [key for key, val in ENV_VARS.items() if not val]
 
     if missing:
@@ -30,5 +36,11 @@ def are_env_vars_loaded() -> bool:
 
 
 def validate_env_vars():
+    """
+    Validate environment variables and raise an error if any are missing.
+
+    Raises:
+        EnvironmentError: If one or more required environment variables are missing.
+    """
     if not are_env_vars_loaded():
         raise EnvironmentError("One or more required environment variables are missing")

@@ -6,6 +6,18 @@ from src.core.logger import logger
 
 
 async def read_files_into_memory(files: List[UploadFile]) -> List[FileData]:
+    """
+    Validate and read uploaded files into memory as FileData objects.
+
+    Args:
+        files (List[UploadFile]): List of uploaded files.
+
+    Raises:
+        HTTPException: If any file has an unsupported content type.
+
+    Returns:
+        List[FileData]: List of file data with filename, content bytes, and content type.
+    """
     file_data_list: List[FileData] = []
 
     for file in files:
@@ -15,6 +27,7 @@ async def read_files_into_memory(files: List[UploadFile]) -> List[FileData]:
                 detail=f"File type {file.content_type} not allowed for {file.filename}",
             )
 
+        # Read file content asynchronously into bytes
         content_bytes = await file.read()
 
         file_data = FileData(

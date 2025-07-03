@@ -9,11 +9,28 @@ health_router = APIRouter()
 
 @health_router.get("/", status_code=status.HTTP_200_OK)
 async def health_endpoint():
+    """
+    Basic health check endpoint.
+
+    Returns:
+        dict: A simple status message indicating the service is working.
+    """
     return {"status": "working"}
 
 
 @health_router.get("/deep", status_code=status.HTTP_200_OK)
 async def deep_health_check_endpoint():
+    """
+    Deep health check endpoint to verify critical dependencies.
+
+    Checks:
+        - MongoDB connection status.
+        - Environment variables loaded status.
+
+    Returns:
+        dict: Status 'healthy' with checks if all pass.
+        JSONResponse: Status 'unhealthy' with failing checks and HTTP 503 if any fail.
+    """
     checks = {
         "mongo_connected": is_mongo_connected(),
         "env_vars_loaded": are_env_vars_loaded(),

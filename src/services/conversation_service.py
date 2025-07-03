@@ -15,6 +15,12 @@ from typing import List
 
 
 async def create_conversation() -> Conversation:
+    """
+    Create a new conversation for the current authenticated user.
+
+    Returns:
+        Conversation: Newly created conversation object.
+    """
     user = await get_current_user()
     now = datetime.now(timezone.utc)
 
@@ -34,6 +40,18 @@ async def create_conversation() -> Conversation:
 
 
 async def get_conversation(conversation_id: str) -> Conversation:
+    """
+    Retrieve a conversation by ID ensuring it belongs to current user.
+
+    Args:
+        conversation_id (str): The ID of the conversation.
+
+    Returns:
+        Conversation: Conversation object.
+
+    Raises:
+        HTTPException: If conversation not found or access is unauthorized.
+    """
     conversation = await conversations_collection.find_one(
         {"_id": convert_to_object_id(conversation_id)}
     )
@@ -60,6 +78,15 @@ async def get_conversation(conversation_id: str) -> Conversation:
 async def get_conversation_with_messages(
     conversation_id: str,
 ) -> ConversationWithMessages:
+    """
+    Get a conversation along with its associated messages.
+
+    Args:
+        conversation_id (str): The ID of the conversation.
+
+    Returns:
+        ConversationWithMessages: Conversation including messages.
+    """
     conversation = await get_conversation(conversation_id)
     messages = await get_messages(conversation_id)
 
@@ -69,6 +96,12 @@ async def get_conversation_with_messages(
 
 
 async def get_all_conversations() -> List[Conversation]:
+    """
+    Retrieve all conversations for the current authenticated user.
+
+    Returns:
+        List[Conversation]: List of conversations.
+    """
     user = await get_current_user()
 
     cursor = conversations_collection.find({"userId": convert_to_object_id(user["id"])})
@@ -82,6 +115,15 @@ async def get_all_conversations() -> List[Conversation]:
 
 
 async def delete_conversation(conversation_id: str) -> None:
+    """
+    Delete a conversation and its messages by conversation ID.
+
+    Args:
+        conversation_id (str): The ID of the conversation to delete.
+
+    Raises:
+        HTTPException: If deletion fails.
+    """
     conversation = await get_conversation(conversation_id)
 
     await delete_messages(conversation_id)
@@ -100,6 +142,19 @@ async def delete_conversation(conversation_id: str) -> None:
 async def update_conversation(
     conversation_id: str, update_conversation: UpdateConversation
 ) -> Conversation:
+    """
+    Update fields of a conversation by ID.
+
+    Args:
+        conversation_id (str): The ID of the conversation.
+        update_conversation (UpdateConversation): Fields to update.
+
+    Returns:
+        Conversation: Updated conversation object.
+
+    Raises:
+        HTTPException: If conversation is not found.
+    """
     conversation = await get_conversation(conversation_id)
 
     if not conversation:

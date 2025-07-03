@@ -1,7 +1,9 @@
 from langchain_openai import ChatOpenAI
 
+# Default model to use
 model = "gpt-4o-mini"
 
+# Token limits for various OpenAI models
 MODEL_TOKEN_LIMITS = {
     "gpt-3.5-turbo": 4096,
     "gpt-3.5-turbo-16k": 16384,
@@ -18,8 +20,28 @@ MODEL_TOKEN_LIMITS = {
 
 
 async def async_get_openai_model(temperature=0.1, model=model):
+    """
+    Asynchronously instantiate a ChatOpenAI model with specified temperature and model name.
+
+    Args:
+        temperature (float): Sampling temperature for response randomness.
+        model (str): Model name to use.
+
+    Returns:
+        ChatOpenAI: An async-compatible ChatOpenAI instance.
+    """
     return ChatOpenAI(temperature=temperature, model=model)
 
 
 def get_openai_model(temperature=0.1, model=model):
+    """
+    Instantiate a synchronous ChatOpenAI model with specified temperature and model name.
+
+    Args:
+        temperature (float): Sampling temperature for response randomness.
+        model (str): Model name to use.
+
+    Returns:
+        ChatOpenAI: A ChatOpenAI instance.
+    """
     return ChatOpenAI(temperature=temperature, model=model)

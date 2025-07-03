@@ -13,6 +13,7 @@
     "openxmlformats",
     "pdfs",
     "QVOB",
-    "spreadsheetml"
+    "spreadsheetml",
+    "vectorizing"
   ]
 }

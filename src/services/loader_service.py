@@ -31,6 +31,18 @@ class LoaderService:
     async def run(
         self, files: List[FileData], conversation_id: str, message_id: str
     ) -> bool:
+        """
+        Process multiple files: upload to S3, split and index their content,
+        then update conversation status.
+
+        Args:
+            files (List[FileData]): List of files to process.
+            conversation_id (str): Conversation ID related to the files.
+            message_id (str): Message ID related to the files.
+
+        Returns:
+            bool: True if all files processed successfully, False otherwise.
+        """
         if not files:
             logger.info("No files provided and the loader run is terminated early.")
             return False
@@ -39,10 +51,7 @@ class LoaderService:
         self.message_id = message_id
 
         try:
-            tasks = []
-
-            for file in files:
-                tasks.append(self._process_file(file))
+            tasks = [self._process_file(file) for file in files]
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -51,6 +60,7 @@ class LoaderService:
                     logger.error(f"Error loading file: {res}")
                     return False
 
+            # Mark conversation as having files uploaded
             updated_conversation = UpdateConversation(hasFilesUploaded=True)
             await update_conversation(
                 conversation_id=conversation_id,
@@ -65,11 +75,29 @@ class LoaderService:
             return False
 
     async def _process_file(self, file: UploadFile):
+        """
+        Upload file to S3 and load its content based on type.
+
+        Args:
+            file (UploadFile): The file to process.
+        """
         file_key = await self._upload_file_to_s3(file)
         logger.info(f"Uploaded file with key: {file_key}")
         await self._load_file_by_type(file_key=file_key, content_type=file.content_type)
 
     async def _upload_file_to_s3(self, file_data: FileData) -> str:
+        """
+        Upload a file to S3 asynchronously.
+
+        Args:
+            file_data (FileData): File data to upload.
+
+        Returns:
+            str: Generated S3 key for the uploaded file.
+
+        Raises:
+            HTTPException: If upload fails.
+        """
         ext = os.path.splitext(file_data.filename)[1]
         file_key = f"{uuid4()}{ext}"
 
@@ -98,10 +126,29 @@ class LoaderService:
         return file_key
 
     def _load_file_from_s3(self, file_key: str) -> List[Document]:
+        """
+        Load file content from S3 using the S3FileLoader.
+
+        Args:
+            file_key (str): The S3 key of the file.
+
+        Returns:
+            List[Document]: List of loaded documents.
+        """
         loader = S3FileLoader(BUCKET_NAME, file_key)
         return loader.load()
 
     async def _load_file_by_type(self, file_key: str, content_type: str):
+        """
+        Dispatch file loading based on MIME type.
+
+        Args:
+            file_key (str): S3 key of the file.
+            content_type (str): MIME type of the file.
+
+        Raises:
+            HTTPException: For unsupported file types.
+        """
         handlers = {
             FILE_TYPE["PDF"]: self._load_pdf,
             FILE_TYPE["JPEG"]: self._load_image,
@@ -123,6 +170,12 @@ class LoaderService:
             )
 
     async def _load_pdf(self, file_key: str):
+        """
+        Load and chunk PDF document, enrich metadata, then add to vector store.
+
+        Args:
+            file_key (str): S3 key of the PDF file.
+        """
         documents = self._load_file_from_s3(file_key)
         chunks = chunking_service.recursive_text_splitter(documents=documents)
         enriched_chunks = await self._enrich_documents_with_metadata(chunks)
@@ -134,6 +187,12 @@ class LoaderService:
         add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
 
     async def _load_image(self, file_key: str):
+        """
+        Load and chunk image document, enrich metadata, then add to vector store.
+
+        Args:
+            file_key (str): S3 key of the image file.
+        """
         documents = self._load_file_from_s3(file_key)
         chunks = chunking_service.recursive_text_splitter(documents)
         enriched_chunks = await self._enrich_documents_with_metadata(chunks)
@@ -145,6 +204,12 @@ class LoaderService:
         add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
 
     async def _load_csv(self, file_key: str):
+        """
+        Load and chunk CSV document, enrich metadata, then add to vector store.
+
+        Args:
+            file_key (str): S3 key of the CSV file.
+        """
         documents = self._load_file_from_s3(file_key)
         chunks = chunking_service.recursive_text_splitter(documents)
         enriched_chunks = await self._enrich_documents_with_metadata(chunks)
@@ -158,6 +223,15 @@ class LoaderService:
     async def _enrich_documents_with_metadata(
         self, documents: List[Document]
     ) -> List[Document]:
+        """
+        Add conversation, message, user IDs, and chunk order to document metadata.
+
+        Args:
+            documents (List[Document]): List of documents to enrich.
+
+        Returns:
+            List[Document]: Enriched documents.
+        """
         user = await get_current_user()
 
         for i, document in enumerate(documents):

@@ -7,16 +7,16 @@ from langgraph.checkpoint.memory import MemorySaver
 from src.llm.prompts import super_chat_prompt
 
 
-# Define state that will track the message history
+# Define the chat state type tracking the list of messages
 class ChatState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
 
 
-# Create graph
+# Initialize the state graph workflow with ChatState
 workflow = StateGraph(ChatState)
 
 
-# Define model node
+# Async model node that calls OpenAI with system + chat messages and returns new message list
 async def call_model(state: ChatState):
     messages = state["messages"]
     system_message = SystemMessage(content=super_chat_prompt.format())
@@ -28,13 +28,14 @@ async def call_model(state: ChatState):
 
 
 def get_thread_config(conversation_id: str) -> dict:
+    # Returns config dict with thread ID for conversation tracking
     return {"configurable": {"thread_id": conversation_id}}
 
 
-# Add single node
+# Connect workflow nodes: start to model node
 workflow.add_edge(START, "model")
 workflow.add_node("model", call_model)
 
-# Add memory persistence
+# Add memory checkpointing to persist state
 memory = MemorySaver()
 app = workflow.compile(checkpointer=memory)

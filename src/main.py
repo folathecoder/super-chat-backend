@@ -19,13 +19,20 @@ base_url = f"/api/{version}"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Startup and shutdown logic for the FastAPI app.
+
+    - Validate environment variables
+    - Check MongoDB connection
+    - Properly close MongoDB client on shutdown
+    """
     try:
         validate_env_vars()
         is_mongo_connected()
 
         logger.info(f"Starting {APP_NAME} application...")
 
-        yield  # App runs here
+        yield
 
     except Exception as e:
         logger.error("Application failed to connect to MongoDB: %s", e)
@@ -43,6 +50,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
 app.include_router(health_router, prefix=f"{base_url}/health", tags=["Health"])
 app.include_router(user_router, prefix=f"{base_url}/users", tags=["User"])
 app.include_router(

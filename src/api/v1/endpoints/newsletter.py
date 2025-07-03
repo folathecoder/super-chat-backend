@@ -10,6 +10,18 @@ newsletter_router = APIRouter()
     "/", status_code=status.HTTP_201_CREATED, response_model=Newsletter
 )
 async def generate_newsletter_endpoint(data: CreateNewsletter):
+    """
+    Generate a newsletter based on provided data.
+
+    Args:
+        data (CreateNewsletter): Input data for newsletter creation.
+
+    Returns:
+        Newsletter: The generated newsletter.
+
+    Raises:
+        HTTPException: 400 Bad Request if generation fails.
+    """
     try:
         return await generate_newsletter(data)
     except Exception as e:

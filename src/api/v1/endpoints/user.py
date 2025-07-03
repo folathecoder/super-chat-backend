@@ -13,6 +13,18 @@ user_router = APIRouter()
 
 @user_router.post("/", status_code=status.HTTP_201_CREATED, response_model=User)
 async def create_user_endpoint(data: BaseUser):
+    """
+    Create a new user.
+
+    Args:
+        data (BaseUser): User creation data.
+
+    Returns:
+        User: The created user.
+
+    Raises:
+        HTTPException: 400 Bad Request if creation fails.
+    """
     try:
         return await create_user(data)
     except Exception as e:
@@ -24,6 +36,18 @@ async def create_user_endpoint(data: BaseUser):
 
 @user_router.get("/{user_id}", status_code=status.HTTP_200_OK, response_model=User)
 async def get_user_endpoint(user_id: str):
+    """
+    Retrieve user details by user ID.
+
+    Args:
+        user_id (str): User identifier.
+
+    Returns:
+        User: User details.
+
+    Raises:
+        HTTPException: 404 Not Found if user does not exist.
+    """
     try:
         return await get_user_by_id(user_id)
     except Exception as e:
@@ -35,6 +59,19 @@ async def get_user_endpoint(user_id: str):
 
 @user_router.patch("/{user_id}", status_code=status.HTTP_200_OK, response_model=User)
 async def update_user_endpoint(user_id: str, data: UpdateUser):
+    """
+    Update existing user information.
+
+    Args:
+        user_id (str): User identifier.
+        data (UpdateUser): Data for updating user.
+
+    Returns:
+        User: Updated user.
+
+    Raises:
+        HTTPException: 400 Bad Request if update fails.
+    """
     try:
         return await update_user(user_id, data)
     except Exception as e:
@@ -48,6 +85,15 @@ async def update_user_endpoint(user_id: str, data: UpdateUser):
     "/{user_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None
 )
 async def delete_user_endpoint(user_id: str):
+    """
+    Delete a user by ID.
+
+    Args:
+        user_id (str): User identifier.
+
+    Raises:
+        HTTPException: 400 Bad Request if deletion fails.
+    """
     try:
         return await delete_user(user_id)
     except Exception as e:

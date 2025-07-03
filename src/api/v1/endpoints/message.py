@@ -2,12 +2,9 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File,
 from starlette import status
 from typing import List, Optional
 from src.models.message import Message, CreateMessage, Author
-from src.models.file import FileData
 from src.services.message_service import create_message
 from src.services.chat_service import get_chat_response
 from src.models.status import Status
-from src.utils.constants.file_type import ALLOWED_FILE_TYPES
-from src.core.logger import logger
 from src.services.file_service import read_files_into_memory
 
 messages_router = APIRouter()
@@ -24,6 +21,23 @@ async def create_message_endpoint(
     status: Optional[Status] = Form(None),
     files: Optional[List[UploadFile]] = File(default=None),
 ):
+    """
+    Create a user message and trigger async AI response generation.
+
+    Args:
+        conversation_id (str): Conversation ID.
+        background_tasks (BackgroundTasks): For running async tasks.
+        content (str): Message text content.
+        author (Author): Message author.
+        status (Optional[Status]): Optional message status.
+        files (Optional[List[UploadFile]]): Optional uploaded files.
+
+    Returns:
+        Message: Created user message.
+
+    Raises:
+        HTTPException: 400 Bad Request on failure.
+    """
     try:
         message = CreateMessage(content=content, author=author, status=status)
         user_message = await create_message(conversation_id, message, Author.USER)
@@ -42,6 +56,7 @@ async def create_message_endpoint(
         )
 
         return user_message
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

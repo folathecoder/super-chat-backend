@@ -16,6 +16,15 @@ conversation_router = APIRouter()
     "/", status_code=status.HTTP_201_CREATED, response_model=Conversation
 )
 async def start_conversation_endpoint():
+    """
+    Start a new conversation.
+
+    Returns:
+        Conversation: The newly created conversation.
+
+    Raises:
+        HTTPException: 400 Bad Request if creation fails.
+    """
     try:
         return await create_conversation()
     except Exception as e:
@@ -31,6 +40,18 @@ async def start_conversation_endpoint():
     response_model=ConversationWithMessages,
 )
 async def get_conversation_endpoint(conversation_id: str):
+    """
+    Retrieve a conversation and its messages by ID.
+
+    Args:
+        conversation_id (str): Conversation identifier.
+
+    Returns:
+        ConversationWithMessages: Conversation data including messages.
+
+    Raises:
+        HTTPException: 404 Not Found if conversation is missing or error occurs.
+    """
     try:
         return await get_conversation_with_messages(conversation_id)
     except Exception as e:
@@ -44,6 +65,15 @@ async def get_conversation_endpoint(conversation_id: str):
     "/", status_code=status.HTTP_200_OK, response_model=List[Conversation]
 )
 async def get_all_conversations_endpoint():
+    """
+    Retrieve all conversations.
+
+    Returns:
+        List[Conversation]: List of all conversations.
+
+    Raises:
+        HTTPException: 404 Not Found if retrieval fails.
+    """
     try:
         return await get_all_conversations()
     except Exception as e:
@@ -59,6 +89,15 @@ async def get_all_conversations_endpoint():
     response_model=None,
 )
 async def delete_conversation_endpoint(conversation_id: str):
+    """
+    Delete a conversation by ID.
+
+    Args:
+        conversation_id (str): Conversation identifier.
+
+    Raises:
+        HTTPException: 400 Bad Request if deletion fails.
+    """
     try:
         return await delete_conversation(conversation_id)
     except Exception as e:
