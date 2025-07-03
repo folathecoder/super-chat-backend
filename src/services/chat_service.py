@@ -41,16 +41,14 @@ async def get_chat_response(
         query = user_message["content"]
 
         # Retrieve relevant context using retrieval service
-        question = await retrieval_service.run(
+        query_with_context = await retrieval_service.run(
             query=query,
             conversation_id=conversation_id,
             message_id=message_id,
             files=file_data_list,
         )
 
-        print("question", question)
-
-        input_messages = [HumanMessage(content=query)]
+        input_messages = [HumanMessage(content=query_with_context)]
         config = get_thread_config(conversation_id)
 
         # Invoke the chat model asynchronously with context

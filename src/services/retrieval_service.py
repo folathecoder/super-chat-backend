@@ -2,9 +2,9 @@ from typing import Optional, List
 from src.services.loader_service import loader_service
 from src.core.logger import logger
 from src.models.file import FileData
-from src.services.conversation_service import get_conversation
 from src.utils.filters.filter_empty_files import filter_empty_files
 from src.services.vector_store_service import search_documents_from_vector_store
+from src.llm.prompts import super_chat_document_context
 
 
 class RetrievalService:
@@ -35,18 +35,12 @@ class RetrievalService:
         self.conversation_id = conversation_id
         self.message_id = message_id
 
-        conversation = await get_conversation(conversation_id=self.conversation_id)
-        has_uploaded_files = conversation.get("hasFilesUploaded", False)
-
         # No new valid files & no prior uploads — just return the query as-is
         if not valid_files:
-            if not has_uploaded_files:
-                logger.info("No valid files and no uploads in conversation history.")
-                return query
-
-            # No new files, but previous files exist — use existing vector store context
-            logger.info("No new valid files. Use existing vector store context.")
-            return self._retrieve_context_from_vector_store(query)
+            logger.info(
+                "No valid files uploaded. Speak to LLM directly without context"
+            )
+            return query
 
         # New valid files detected — send to loader service for processing
         logger.info("Valid files detected. Sending to loader service.")
@@ -75,7 +69,12 @@ class RetrievalService:
         context = " ".join(page_contents)
 
         logger.info("Context retrieved from vector store")
-        return context
+
+        retrieved_context_with_query = super_chat_document_context.format(
+            context=context, question=query
+        )
+
+        return retrieved_context_with_query
 
     async def _load_documents_and_retrieve_context_from_vector_store(
         self,

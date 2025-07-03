@@ -37,6 +37,7 @@ def search_documents_from_vector_store(
     search_results = vector_store.similarity_search(
         query=query, k=k, filter=filter, namespace=namespace
     )
+
     logger.info(
         f"Retrieved {len(search_results)} documents from the vector database for query: {query}"
     )
