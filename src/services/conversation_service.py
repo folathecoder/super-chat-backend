@@ -12,6 +12,9 @@ from src.utils.converters.convert_to_object_id import convert_to_object_id
 from src.services.user_service import get_current_user
 from src.services.message_service import get_messages, delete_messages
 from typing import List
+from src.services.vector_store_service import delete_documents_from_vector_store
+from src.services.s3_services import delete_objects_by_metadata
+from src.core.config import ENV_VARS
 
 
 async def create_conversation() -> Conversation:
@@ -125,6 +128,16 @@ async def delete_conversation(conversation_id: str) -> None:
         HTTPException: If deletion fails.
     """
     conversation = await get_conversation(conversation_id)
+
+    delete_documents_from_vector_store(
+        filter={"conversation_id": conversation_id}, key=conversation_id
+    )
+
+    await delete_objects_by_metadata(
+        bucket_name=ENV_VARS["AWS_S3_BUCKET_NAME"],
+        metadata_key="conversation_id",
+        metadata_value=conversation_id,
+    )
 
     await delete_messages(conversation_id)
 

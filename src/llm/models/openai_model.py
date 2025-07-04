@@ -19,7 +19,7 @@ MODEL_TOKEN_LIMITS = {
 }
 
 
-async def async_get_openai_model(temperature=0.1, model=model):
+async def async_get_openai_model(temperature=0.5, model=model):
     """
     Asynchronously instantiate a ChatOpenAI model with specified temperature and model name.
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from starlette import status
 from src.models.conversation import Conversation, ConversationWithMessages
 from typing import List
@@ -88,7 +88,10 @@ async def get_all_conversations_endpoint():
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
 )
-async def delete_conversation_endpoint(conversation_id: str):
+async def delete_conversation_endpoint(
+    conversation_id: str,
+    background_tasks: BackgroundTasks,
+):
     """
     Delete a conversation by ID.
 
@@ -99,7 +102,7 @@ async def delete_conversation_endpoint(conversation_id: str):
         HTTPException: 400 Bad Request if deletion fails.
     """
     try:
-        return await delete_conversation(conversation_id)
+        background_tasks.add_task(delete_conversation, conversation_id)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

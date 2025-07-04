@@ -12,8 +12,10 @@
     "officedocument",
     "openxmlformats",
     "pdfs",
+    "presentationml",
     "QVOB",
     "spreadsheetml",
-    "vectorizing"
+    "vectorizing",
+    "wordprocessingml"
   ]
 }

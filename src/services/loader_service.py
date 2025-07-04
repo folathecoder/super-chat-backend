@@ -52,15 +52,20 @@ class LoaderService:
 
         try:
             tasks = [self._process_file(file) for file in files]
+            had_errors = False
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             for res in results:
                 if isinstance(res, Exception):
                     logger.error(f"Error loading file: {res}")
-                    return False
+                    had_errors = True
 
-            # Mark conversation as having files uploaded
+            if had_errors:
+                logger.warning(
+                    "Some files failed to load, but continuing with the pipeline."
+                )
+
             updated_conversation = UpdateConversation(hasFilesUploaded=True)
             await update_conversation(
                 conversation_id=conversation_id,
@@ -83,7 +88,25 @@ class LoaderService:
         """
         file_key = await self._upload_file_to_s3(file)
         logger.info(f"Uploaded file with key: {file_key}")
-        await self._load_file_by_type(file_key=file_key, content_type=file.content_type)
+
+        await self._load_file_to_vector_store(file_key=file_key)
+
+    async def _load_file_to_vector_store(self, file_key: str):
+        """
+        Load and chunk document, enrich metadata, then add to vector store.
+
+        Args:
+            file_key (str): S3 key of the PDF file.
+        """
+        documents = self._load_file_from_s3(file_key)
+        chunks = chunking_service.recursive_text_splitter(documents=documents)
+        enriched_chunks = await self._enrich_documents_with_metadata(chunks)
+
+        logger.info(
+            f"Loaded document and splitted into {len(chunks)} chunks: {file_key}"
+        )
+
+        add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
 
     async def _upload_file_to_s3(self, file_data: FileData) -> str:
         """
@@ -137,88 +160,6 @@ class LoaderService:
         """
         loader = S3FileLoader(BUCKET_NAME, file_key)
         return loader.load()
-
-    async def _load_file_by_type(self, file_key: str, content_type: str):
-        """
-        Dispatch file loading based on MIME type.
-
-        Args:
-            file_key (str): S3 key of the file.
-            content_type (str): MIME type of the file.
-
-        Raises:
-            HTTPException: For unsupported file types.
-        """
-        handlers = {
-            FILE_TYPE["PDF"]: self._load_pdf,
-            FILE_TYPE["JPEG"]: self._load_image,
-            FILE_TYPE["PNG"]: self._load_image,
-            FILE_TYPE["CSV"]: self._load_csv,
-        }
-
-        handler = handlers.get(content_type)
-
-        if handler:
-            if inspect.iscoroutinefunction(handler):
-                return await handler(file_key)
-            return handler(file_key)
-        else:
-            logger.error(f"Unsupported file type: {content_type}")
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=f"Unsupported file type: {content_type}",
-            )
-
-    async def _load_pdf(self, file_key: str):
-        """
-        Load and chunk PDF document, enrich metadata, then add to vector store.
-
-        Args:
-            file_key (str): S3 key of the PDF file.
-        """
-        documents = self._load_file_from_s3(file_key)
-        chunks = chunking_service.recursive_text_splitter(documents=documents)
-        enriched_chunks = await self._enrich_documents_with_metadata(chunks)
-
-        logger.info(
-            f"Loaded PDF document and splitted into {len(chunks)} chunks: {file_key}"
-        )
-
-        add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
-
-    async def _load_image(self, file_key: str):
-        """
-        Load and chunk image document, enrich metadata, then add to vector store.
-
-        Args:
-            file_key (str): S3 key of the image file.
-        """
-        documents = self._load_file_from_s3(file_key)
-        chunks = chunking_service.recursive_text_splitter(documents)
-        enriched_chunks = await self._enrich_documents_with_metadata(chunks)
-
-        logger.info(
-            f"Loaded Image document and splitted into {len(chunks)} chunks: {file_key}"
-        )
-
-        add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
-
-    async def _load_csv(self, file_key: str):
-        """
-        Load and chunk CSV document, enrich metadata, then add to vector store.
-
-        Args:
-            file_key (str): S3 key of the CSV file.
-        """
-        documents = self._load_file_from_s3(file_key)
-        chunks = chunking_service.recursive_text_splitter(documents)
-        enriched_chunks = await self._enrich_documents_with_metadata(chunks)
-
-        logger.info(
-            f"Loaded CSV document and splitted into {len(chunks)} chunks: {file_key}"
-        )
-
-        add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
 
     async def _enrich_documents_with_metadata(
         self, documents: List[Document]
