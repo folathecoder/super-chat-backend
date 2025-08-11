@@ -69,7 +69,7 @@ class RetrievalService:
         search_filter = {"conversation_id": {"$eq": self.conversation_id}}
 
         documents = search_documents_from_vector_store(
-            query=query, k=4, filter=search_filter
+            query=query, k=4, filter=search_filter, min_score=0.5
         )
 
         if not documents:

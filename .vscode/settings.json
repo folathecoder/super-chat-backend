@@ -1,10 +1,13 @@
 {
   "cSpell.words": [
     "ainvoke",
+    "Akinloye",
     "alazy",
     "bson",
     "checkpointer",
     "dotenv",
+    "Folarin",
+    "genai",
     "LANGCHAIN",
     "LANGSMITH",
     "levelname",
@@ -15,6 +18,7 @@
     "presentationml",
     "QVOB",
     "spreadsheetml",
+    "Tavily",
     "vectorizing",
     "wordprocessingml"
   ]

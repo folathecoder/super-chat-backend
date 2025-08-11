@@ -50,13 +50,11 @@ def search_documents_from_vector_store(
         logger.info("No documents passed the score threshold")
         return []
 
-    optimized_search_results = optimize_vector_search_result(documents, query)
-
     logger.info(
-        f"Retrieved {len(optimized_search_results)} documents with score >= {min_score} from vector DB for query: {query}"
+        f"Retrieved {len(documents)} documents with score >= {min_score} from vector DB for query: {query}"
     )
 
-    return optimized_search_results
+    return documents
 
 
 def optimize_vector_search_result(
