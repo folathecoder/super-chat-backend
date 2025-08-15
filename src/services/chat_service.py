@@ -13,6 +13,11 @@ from src.models.file import FileData
 from src.core.logger import logging
 from src.services.retrieval_service import retrieval_service
 from src.llm.prompts import super_chat_conversation_title_prompt
+from src.core.server.socket_server import sio
+from src.core.events import SOCKET_EVENTS
+from src.utils.converters.socketio_utils import (
+    async_safe_socket_emit,
+)
 
 
 async def get_chat_response(
@@ -128,7 +133,16 @@ async def get_chat_title(conversation_id: str) -> None:
                 title=response_text, hasGeneratedTitle=True
             )
 
-            await update_conversation(conversation_id, update_conversation_data)
+            updated_conversation = await update_conversation(
+                conversation_id, update_conversation_data
+            )
+
+            await async_safe_socket_emit(
+                sio,
+                SOCKET_EVENTS["CHAT_TITLE_CREATE"],
+                updated_conversation,
+                room=conversation_id,
+            )
 
     except Exception as e:
         raise RuntimeError(f"Failed to get chat title: {str(e)}")
