@@ -5,7 +5,7 @@ from src.models.file import FileData
 from src.services.conversation_service import get_conversation
 from src.utils.filters.filter_empty_files import filter_empty_files
 from src.services.vector_store_service import search_documents_from_vector_store
-from src.llm.prompts import super_chat_document_context
+from src.llm.prompts.prompts import super_chat_document_context
 
 
 class RetrievalService:

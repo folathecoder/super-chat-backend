@@ -30,7 +30,7 @@ async def async_get_openai_model(temperature=0.5, model=model):
     Returns:
         ChatOpenAI: An async-compatible ChatOpenAI instance.
     """
-    return ChatOpenAI(temperature=temperature, model=model)
+    return ChatOpenAI(temperature=temperature, model=model, streaming=True)
 
 
 def get_openai_model(temperature=0.1, model=model):

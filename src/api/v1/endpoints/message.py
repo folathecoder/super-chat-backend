@@ -8,7 +8,6 @@ from fastapi import (
     status as http_status,
 )
 from typing import List, Optional
-from datetime import datetime
 from src.models.message import Message, CreateMessage, Author
 from src.services.message_service import create_message
 from src.services.chat_service import get_chat_response
@@ -79,39 +78,13 @@ async def create_message_endpoint(
         # Process uploaded files
         file_data_list = await read_files_into_memory(files)
 
-        # Background task for AI response processing
-        async def process_ai():
-            try:
-                chat_response = await get_chat_response(
-                    conversation_id,
-                    saved_ai_message["id"],
-                    message,
-                    file_data_list,
-                )
-
-                # Emit AI response (success state)
-                await async_safe_socket_emit(
-                    sio,
-                    SOCKET_EVENTS["CHAT_AI_MESSAGE"],
-                    chat_response,
-                    room=conversation_id,
-                )
-
-            except Exception as e:
-                # Emit error message if AI processing fails
-                error_message = {
-                    "error": True,
-                    "message": f"AI processing failed: {str(e)}",
-                    "conversation_id": conversation_id,
-                    "timestamp": datetime.now().isoformat(),
-                }
-
-                await async_safe_socket_emit(
-                    sio, "chat:error", error_message, room=conversation_id
-                )
-
-        # Add background task
-        background_tasks.add_task(process_ai)
+        background_tasks.add_task(
+            get_chat_response,
+            conversation_id,
+            saved_ai_message["id"],
+            message,
+            file_data_list,
+        )
 
         return user_message
 

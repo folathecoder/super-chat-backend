@@ -1,12 +1,13 @@
 from fastapi import HTTPException
 from starlette import status
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 from src.models.user import User, BaseUser, UpdateUser
 from src.db.collections import users_collection
 from src.schema.user_schema import user_schema
 from src.utils.converters.convert_to_object_id import convert_to_object_id
 from src.core.config import ENV_VARS
+from src.llm.prompts.template.user_profile_template import user_profile_template
 
 
 async def create_user(data: BaseUser) -> User:
@@ -148,3 +149,35 @@ async def delete_user(user_id: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete user with id: {user_id}",
         )
+
+
+async def user_profile_context() -> str:
+    """
+    Get a user's profile and format it into a descriptive string
+    that can be passed as context to an LLM.
+
+    Returns:
+        str: Overview of the user based on their profile
+    """
+
+    user = await get_current_user()
+
+    first_name: str = user.get("firstName", "Unknown")
+    last_name: str = user.get("lastName", "User")
+    occupation: str = user.get("occupation", "Not specified")
+    industry: str = user.get("industry", "Not specified")
+    interests: str = ", ".join(user.get("interests", []))
+    goals: str = ", ".join(user.get("goals", []))
+    expertise_areas: str = ", ".join(user.get("expertiseAreas", []))
+
+    user_data: Dict[str, str] = {
+        "firstName": first_name,
+        "lastName": last_name,
+        "occupation": occupation,
+        "industry": industry,
+        "interests": interests,
+        "goals": goals,
+        "expertiseAreas": expertise_areas,
+    }
+
+    return user_profile_template.format(**user_data)

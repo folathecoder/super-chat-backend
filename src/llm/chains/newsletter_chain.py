@@ -1,4 +1,4 @@
-from src.llm.prompts import newsletter_prompt
+from src.llm.prompts.prompts import newsletter_prompt
 from src.llm.models.openai_model import get_openai_model
 from src.models.newsletter import Newsletter
 

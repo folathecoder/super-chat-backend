@@ -86,7 +86,7 @@ class LoaderService:
         Args:
             file (UploadFile): The file to process.
         """
-        file_key = await self._upload_file_to_s3(file)
+        file_key = await self.upload_file_to_s3(file)
         logger.info(f"Uploaded file with key: {file_key}")
 
         await self._load_file_to_vector_store(file_key=file_key)
@@ -108,7 +108,7 @@ class LoaderService:
 
         add_documents_to_vector_store(documents=enriched_chunks, key=file_key)
 
-    async def _upload_file_to_s3(self, file_data: FileData) -> str:
+    async def upload_file_to_s3(self, file_data: FileData) -> str:
         """
         Upload a file to S3 asynchronously.
 

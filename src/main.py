@@ -5,6 +5,8 @@ from src.api.v1.endpoints.user import user_router
 from src.api.v1.endpoints.conversation import conversation_router
 from src.api.v1.endpoints.message import messages_router
 from src.api.v1.endpoints.newsletter import newsletter_router
+from src.api.v1.endpoints.prompt import prompt_router
+from src.api.v1.endpoints.file import file_router
 from src.db.mongo import is_mongo_connected, client
 from src.core.config import validate_env_vars
 from src.core.logger import logger
@@ -69,6 +71,8 @@ app.include_router(messages_router, prefix=f"{base_url}/messages", tags=["Messag
 app.include_router(
     newsletter_router, prefix=f"{base_url}/newsletters", tags=["Newsletter"]
 )
+app.include_router(prompt_router, prefix=f"{base_url}/prompts", tags=["Prompt"])
+app.include_router(file_router, prefix=f"{base_url}/files", tags=["File"])
 
 
 app.mount("/socket.io", socket_app)

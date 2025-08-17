@@ -12,7 +12,7 @@ from src.models.conversation import UpdateConversation
 from src.models.file import FileData
 from src.core.logger import logging
 from src.services.retrieval_service import retrieval_service
-from src.llm.prompts import super_chat_conversation_title_prompt
+from src.llm.prompts.prompts import super_chat_conversation_title_prompt
 from src.core.server.socket_server import sio
 from src.core.events import SOCKET_EVENTS
 from src.utils.converters.socketio_utils import (
@@ -61,7 +61,7 @@ async def get_chat_response(
         response_text = output["messages"][-1].content
 
         if not response_text:
-            await get_chat_response_failed(message_id)
+            await get_chat_response_failed(message_id, conversation_id)
             raise ValueError("Empty response received from the model.")
 
         # Update AI message with generated response and success status
@@ -79,22 +79,40 @@ async def get_chat_response(
             )
         )
 
+        await async_safe_socket_emit(
+            sio,
+            SOCKET_EVENTS["CHAT_AI_MESSAGE"],
+            updated_ai_message,
+            room=conversation_id,
+        )
+
         return updated_ai_message
 
     except Exception as e:
-        await get_chat_response_failed(message_id)
+        await get_chat_response_failed(message_id, conversation_id)
         raise RuntimeError(f"Failed to get chat response: {str(e)}")
 
 
-async def get_chat_response_failed(message_id: str) -> None:
+async def get_chat_response_failed(
+    message_id: str,
+    conversation_id: str,
+) -> None:
     """
     Mark a chat response message as failed.
 
     Args:
         message_id (str): ID of the message to update.
+        conversation_id: ID of the conversation the message belongs to
     """
     update_data = UpdateMessage(status=Status.FAILED)
-    await update_message(message_id, update_data)
+    updated_message = await update_message(message_id, update_data)
+
+    await async_safe_socket_emit(
+        sio,
+        SOCKET_EVENTS["CHAT_AI_MESSAGE"],
+        updated_message,
+        room=conversation_id,
+    )
 
 
 async def get_chat_title(conversation_id: str) -> None:

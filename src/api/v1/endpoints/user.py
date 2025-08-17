@@ -6,6 +6,7 @@ from src.services.user_service import (
     get_user_by_id,
     update_user,
     delete_user,
+    get_current_user,
 )
 
 user_router = APIRouter()
@@ -34,13 +35,10 @@ async def create_user_endpoint(data: BaseUser):
         )
 
 
-@user_router.get("/{user_id}", status_code=status.HTTP_200_OK, response_model=User)
-async def get_user_endpoint(user_id: str):
+@user_router.get("/me", status_code=status.HTTP_200_OK, response_model=User)
+async def get_user_endpoint():
     """
-    Retrieve user details by user ID.
-
-    Args:
-        user_id (str): User identifier.
+    Retrieve user details without requiring an ID.
 
     Returns:
         User: User details.
@@ -49,11 +47,11 @@ async def get_user_endpoint(user_id: str):
         HTTPException: 404 Not Found if user does not exist.
     """
     try:
-        return await get_user_by_id(user_id)
+        return await get_current_user()
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id: {user_id} not found: {str(e)}",
+            detail=f"User not found: {str(e)}",
         )
 
 
