@@ -5,7 +5,7 @@ from src.core.logger import logger
 sio = socketio.AsyncServer(
     cors_allowed_origins="*",
     async_mode="asgi",
-    logger=True,
+    logger=False,
     ping_timeout=60,
     ping_interval=25,
     allow_upgrades=True,

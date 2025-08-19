@@ -12,12 +12,13 @@ from src.models.conversation import UpdateConversation
 from src.models.file import FileData
 from src.core.logger import logging
 from src.services.retrieval_service import retrieval_service
-from src.llm.prompts.prompts import super_chat_conversation_title_prompt
 from src.core.server.socket_server import sio
 from src.core.events import SOCKET_EVENTS
 from src.utils.converters.socketio_utils import (
     async_safe_socket_emit,
 )
+from src.llm.chains.conversation_title_chain import chat_conversation_title_chain
+from src.models.conversation import ConversationTitle
 
 
 async def get_chat_response(
@@ -56,9 +57,23 @@ async def get_chat_response(
         input_messages = [HumanMessage(content=query_with_context)]
         config = get_thread_config(conversation_id)
 
-        # Invoke the chat model asynchronously with context
-        output = await app.ainvoke({"messages": input_messages}, config=config)
-        response_text = output["messages"][-1].content
+        chunks = []
+
+        async for token, metadata in app.astream(
+            {"messages": input_messages, "language": "English"},
+            config,
+            stream_mode="messages",
+        ):
+            chunks.append(token.content)
+
+            await async_safe_socket_emit(
+                sio,
+                SOCKET_EVENTS["CHAT_AI_STREAM"],
+                {"id": message_id, "content": token.content},
+                room=conversation_id,
+            )
+
+        response_text = "".join(chunks).strip()
 
         if not response_text:
             await get_chat_response_failed(message_id, conversation_id)
@@ -70,7 +85,8 @@ async def get_chat_response(
 
         # Launch background task to generate conversation title asynchronously
         title_task = asyncio.create_task(
-            get_chat_title(conversation_id), name="generate_chat_title"
+            get_chat_title(conversation_id, updated_ai_message),
+            name="generate_chat_title",
         )
 
         title_task.add_done_callback(
@@ -115,12 +131,13 @@ async def get_chat_response_failed(
     )
 
 
-async def get_chat_title(conversation_id: str) -> None:
+async def get_chat_title(conversation_id: str, message: Message) -> None:
     """
     Generate and update conversation title using chat model if not already generated.
 
     Args:
         conversation_id (str): ID of the conversation.
+        message (Message): Latest AI message
 
     Raises:
         RuntimeError: If title generation fails.
@@ -135,20 +152,17 @@ async def get_chat_title(conversation_id: str) -> None:
             )
 
         if conversation["hasGeneratedTitle"] == False:
-            config = get_thread_config(conversation_id)
+            conversation_title: ConversationTitle = (
+                chat_conversation_title_chain.invoke({"context": message["content"]})
+            )
 
-            input_messages = [
-                HumanMessage(content=super_chat_conversation_title_prompt.format())
-            ]
+            title = conversation_title["title"]
 
-            output = await app.ainvoke({"messages": input_messages}, config=config)
-            response_text = output["messages"][-1].content
-
-            if not response_text:
+            if not title:
                 raise ValueError("Empty response received from the model.")
 
             update_conversation_data = UpdateConversation(
-                title=response_text, hasGeneratedTitle=True
+                title=title, hasGeneratedTitle=True
             )
 
             updated_conversation = await update_conversation(
