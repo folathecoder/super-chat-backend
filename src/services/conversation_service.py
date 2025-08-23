@@ -15,6 +15,11 @@ from typing import List
 from src.services.vector_store_service import delete_documents_from_vector_store
 from src.services.s3_services import delete_objects_by_metadata
 from src.core.config import ENV_VARS
+from src.core.server.socket_server import sio
+from src.core.events import SOCKET_EVENTS
+from src.utils.converters.socketio_utils import (
+    async_safe_socket_emit,
+)
 
 
 async def create_conversation() -> Conversation:
@@ -150,6 +155,13 @@ async def delete_conversation(conversation_id: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete conversation with id: {conversation_id}",
         )
+
+    await async_safe_socket_emit(
+        sio,
+        SOCKET_EVENTS["CHAT_DELETE_CONVERSATION"],
+        conversation_id,
+        room=conversation_id,
+    )
 
 
 async def update_conversation(

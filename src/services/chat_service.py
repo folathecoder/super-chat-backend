@@ -69,7 +69,11 @@ async def get_chat_response(
             await async_safe_socket_emit(
                 sio,
                 SOCKET_EVENTS["CHAT_AI_STREAM"],
-                {"id": message_id, "content": token.content},
+                {
+                    "id": message_id,
+                    "conversation_id": conversation_id,
+                    "content": token.content,
+                },
                 room=conversation_id,
             )
 
